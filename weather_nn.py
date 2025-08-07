@@ -4,11 +4,18 @@ from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, BatchNormalization
+import glob
+
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
+csv_files = glob.glob(os.path.join("data/Weather 2017", '*.csv'))
+csv_files2 = glob.glob(os.path.join("data/Weather 2018", '*.csv'))
+df1 = pd.concat([pd.read_csv(file) for file in csv_files], ignore_index=True)
+df2 = pd.concat([pd.read_csv(file) for file in csv_files2], ignore_index=True)
+df = pd.concat([df1, df2], ignore_index=True)
+
 # DATA CLEANUP AND PREPARATION
-df = pd.read_csv("data/en_climate_daily_ON_6158731_2025_P1D.csv")
 drop_cols = [
     "Longitude (x)",
     "Latitude (y)",
@@ -36,6 +43,7 @@ for col in df.columns:
     if col != "Date/Time":
         df[col] = pd.to_numeric(df[col])
 
+print(df.columns)
 # target mean temp is the result we want to predict
 df["Target_Mean_Temp"] = df["Mean Temp (°C)"].shift(-1)
 df["Date/Time"] = pd.to_datetime(df["Date/Time"])
@@ -60,7 +68,6 @@ x = df[
     ]
 ]
 y = df["Target_Mean_Temp"]
-
 # DATA SPLITTING
 x_train, x_test, y_train, y_test = train_test_split(
     x, y, test_size=0.2, shuffle=False
@@ -90,10 +97,13 @@ model = Sequential([
 # Compile
 model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
 # Train
-model.fit(x_train, y_train, epochs=300, validation_split=0.2)
+model.fit(x_train, y_train, epochs=100, validation_split=0.2)
 
 loss, mae = model.evaluate(x_test, y_test)
 print(f"Mean Absolute Error on Test Set: {mae:.2f}°C")
 
 # Predict tomorrow’s temp
 preds = model.predict(x_test)
+print(y_test)
+for i in range(5):
+    print(f"Predicted: {preds[i][0]:.2f}°C, Actual: {y_test.iloc[i]:.2f}°C")
